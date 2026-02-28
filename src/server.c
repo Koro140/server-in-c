@@ -28,16 +28,19 @@ typedef struct TaskQueue {
     bool queue_is_destroyed;
 }TaskQueue;
 
+typedef struct WorkerArr {
+    pthread_t* worker_threads;
+    int worker_count;
+}WorkerArr;
+
 typedef struct Server {
     int socket_fd;
     struct sockaddr_in sock_addr;
     
-    pthread_t* worker_threads;
-    int worker_count;
-
+    WorkerArr* workers;
     TaskQueue* task_queue;
+
     volatile bool server_running;
-    
 }Server;
 
 //// SERVER GLOBAL VARIABLE ... set when enter server_run()
@@ -47,8 +50,8 @@ Server* server_init(const char* ip_addr, uint16_t port, int worker_count);
 void server_close(Server* server);
 
 void* worker_routine(void* arg);
-pthread_t* worker_create(int count, Server* server);
-void worker_destroy(pthread_t* threads, int count);
+WorkerArr* worker_create(int count, Server* server);
+void worker_destroy(WorkerArr* workers);
 
 TaskQueue* task_queue_init(int capacity);
 void task_queue_enqueue(TaskQueue* queue, int item);
@@ -209,8 +212,7 @@ Server* server_init(const char* ip_addr, uint16_t port, int worker_count) {
         return NULL;
     }
 
-    server->worker_threads = worker_create(worker_count, server);
-    server->worker_count = worker_count;
+    server->workers = worker_create(worker_count, server);
     server->server_running = true;
 
     return server;
@@ -219,11 +221,10 @@ Server* server_init(const char* ip_addr, uint16_t port, int worker_count) {
 // Server is NULL after this
 void server_close(Server* server) {
     task_queue_signal_destroy(server->task_queue);
-    worker_destroy(server->worker_threads, server->worker_count);
+    worker_destroy(server->workers);
     task_queue_destroy(server->task_queue);
     
     close(server->socket_fd);
-    free(server->worker_threads);
     free(server);
 }
 
@@ -253,21 +254,48 @@ void* worker_routine(void* arg) {
 }
 
 // TODO: Handle errors
-pthread_t* worker_create(int count, Server* server) {
-    pthread_t* threads = malloc( sizeof(pthread_t) * count);
-
-    for (int i = 0; i < count; i++)
+WorkerArr* worker_create(int count, Server* server) {
+    WorkerArr* arr = malloc(sizeof(WorkerArr));
+    if (arr == NULL)
     {
-        pthread_create(threads + i, NULL, worker_routine, (void*)server);
+        fprintf(stderr, "ERROR::Couldn't allocate memory for worker arr\n");
+        return NULL;
     }
     
-    return threads;
+    
+    pthread_t* threads = malloc( sizeof(pthread_t) * count);
+    if (threads == NULL)
+    {
+        fprintf(stderr, "ERROR::Couldn't allocate memory for workers\n");
+        return NULL;
+    }
+    
+    int created_worker_count = 0;
+    for (int i = 0; i < count; i++)
+    {
+        int ret = pthread_create(threads + created_worker_count, NULL, worker_routine, (void*)server);
+        if (ret != 0)
+        {
+            fprintf(stderr, "Couldn't create a worker thread number %i", i);
+            continue;
+        }
+        
+        created_worker_count++;
+    }
+    
+    arr->worker_threads = threads;
+    arr->worker_count = created_worker_count;
+
+    return arr;
 }
 
-void worker_destroy(pthread_t* threads, int count) {
-    for (int i = 0; i < count; i++) {
-        pthread_join(threads[i], NULL);
+void worker_destroy(WorkerArr* workers) {
+    for (int i = 0; i < workers->worker_count; i++) {
+        pthread_join(workers->worker_threads[i], NULL);
     }
+
+    free(workers->worker_threads);
+    free(workers);
 }
 
 void interrupt_server(int) {
