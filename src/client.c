@@ -27,7 +27,9 @@ int main(void) {
         printf("Error ... couldn't connect to server\n");
         return 1;
     }
-    
+    char msg_buff[1024] = {0};
+    recv(sock_fd, msg_buff, sizeof(msg_buff),0);
+    printf("%s", msg_buff);
     close(sock_fd);
     return 0;
 }
