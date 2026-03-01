@@ -1,6 +1,7 @@
 #include "../worker.h"
 
 #include "../server.h"
+#include "../task_queue.h"
 
 #include <stdlib.h>
 #include <stdio.h>

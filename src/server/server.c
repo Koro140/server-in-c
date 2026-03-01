@@ -1,5 +1,9 @@
 #include "../server.h"
 
+#include "../worker.h"
+#include "../task_queue.h"
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,22 +15,20 @@
 
 #include <signal.h>
 
-#define TASK_QUEUE_CAP 100
-
 //// SERVER GLOBAL VARIABLE ... set when enter server_run()
 Server* g_server = NULL;
 
-static void interrupt_server(int) {
+static void server_interrupt(int) {
     g_server->server_running = false;
     shutdown(g_server->socket_fd, SHUT_RDWR);
 }
 
-Server* server_init(const char* ip_addr, uint16_t port, int worker_count) {
+Server* server_init(const char* ip_addr, uint16_t port, int worker_count, int task_queue_size) {
     int err = 0;
     Server* server = malloc(sizeof(Server));
     memset(server, 0, sizeof(*server));
 
-    server->task_queue = task_queue_init(TASK_QUEUE_CAP);
+    server->task_queue = task_queue_init(task_queue_size);
 
     server->sock_addr.sin_family = AF_INET;
     server->sock_addr.sin_port = htons(port);
@@ -89,7 +91,7 @@ void server_close(Server* server) {
 void server_run(Server* server) {
 
     g_server = server;
-    signal(SIGINT, interrupt_server);
+    signal(SIGINT, server_interrupt);
 
     while (server->server_running)
     {
