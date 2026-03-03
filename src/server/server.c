@@ -29,7 +29,8 @@ Server* server_init(const char* ip_addr, uint16_t port, int worker_count, int ta
     memset(server, 0, sizeof(*server));
 
     server->task_queue = task_queue_init(task_queue_size);
-
+    server->router = router_create();
+    
     server->sock_addr.sin_family = AF_INET;
     server->sock_addr.sin_port = htons(port);
     err = inet_pton(AF_INET, ip_addr, &server->sock_addr.sin_addr);
@@ -82,6 +83,7 @@ void server_close(Server* server) {
     task_queue_signal_destroy(server->task_queue);
     worker_destroy(server->workers);
     task_queue_destroy(server->task_queue);
+    router_destroy(server->router);
     
     close(server->socket_fd);
     free(server);

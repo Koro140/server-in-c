@@ -71,8 +71,13 @@ void* worker_routine(void* arg) {
 
         printf("Client connected\n");
         // Dummy msg ... TODO: do http 
-        char msg[] = "Hello from server";
-        send(connection_fd, msg, sizeof(msg), 0);
+        Route dummy_route = {
+            .name = "/hello",
+            .method = HTTP_METHOD_POST,
+        };
+
+        router_dispatch(server->router, &dummy_route, connection_fd, NULL);
+
         close(connection_fd);
     }
 

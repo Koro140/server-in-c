@@ -3,6 +3,8 @@
 #include <netinet/ip.h>
 #include <stdbool.h>
 
+#include "route.h"'
+
 typedef struct WorkerArr WorkerArr;
 typedef struct TaskQueue TaskQueue;
 
@@ -12,6 +14,7 @@ typedef struct Server {
     
     WorkerArr* workers;
     TaskQueue* task_queue;
+    Router* router;
 
     volatile bool server_running;
 }Server;

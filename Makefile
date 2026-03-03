@@ -6,7 +6,7 @@ BUILD_DIR = ./build
 COMMON_SRC := 
 
 CLIENT_SRC := dummy_client/client.c
-SERVER_SRC := src/main.c src/server/server.c src/task_queue/task_queue.c src/worker/worker.c
+SERVER_SRC := src/main.c src/server/server.c src/task_queue/task_queue.c src/worker/worker.c src/route/route.c
 
 CLIENT := $(BUILD_DIR)/client
 SERVER := $(BUILD_DIR)/server
